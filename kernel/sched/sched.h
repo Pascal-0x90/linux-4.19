@@ -164,7 +164,7 @@ static inline int fair_policy(int policy)
 
 static inline int rt_policy(int policy)
 {
-	return policy == SCHED_FIFO || policy == SCHED_RR;
+	return policy == SCHED_FIFO || policy == SCHED_RR || policy == SCHED_IOT;
 }
 
 static inline int dl_policy(int policy)
@@ -228,6 +228,11 @@ dl_entity_preempt(struct sched_dl_entity *a, struct sched_dl_entity *b)
 struct rt_prio_array {
 	DECLARE_BITMAP(bitmap, MAX_RT_PRIO+1); /* include 1 bit for delimiter */
 	struct list_head queue[MAX_RT_PRIO];
+};
+
+struct iot_prio_array {
+	DECLARE_BITMAP(bitmap, MAX_IOT_PRIO+1); /* include 1 bit for delimiter */
+	struct list_head queue[MAX_IOT_PRIO];
 };
 
 struct rt_bandwidth {
@@ -611,6 +616,33 @@ struct rt_rq {
 #endif
 };
 
+struct iot_rq {
+	struct iot_prio_array	active;
+	unsigned int		iot_nr_running;
+#if defined CONFIG_SMP || defined CONFIG_RT_GROUP_SCHED
+	struct {
+		int		curr;
+#ifdef CONFIG_SMP
+		int		next;
+#endif
+	} highest_prio;
+#endif
+#ifdef CONFIG_SMP
+	unsigned long		iot_nr_migratory;
+	unsigned long		iot_nr_total;
+	int			overloaded;
+	struct plist_head	pushable_tasks;
+
+#endif
+	int			iot_queued;
+
+	int			iot_throttled;
+	u64			iot_time;
+	u64			iot_runtime;
+
+	raw_spinlock_t		iot_runtime_lock;
+};
+
 static inline bool rt_rq_is_runnable(struct rt_rq *rt_rq)
 {
 	return rt_rq->rt_queued && rt_rq->rt_nr_running;
@@ -803,6 +835,7 @@ struct rq {
 
 	struct cfs_rq		cfs;
 	struct rt_rq		rt;
+	struct iot_rq		iot;
 	struct dl_rq		dl;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -1579,6 +1612,7 @@ static inline void set_curr_task(struct rq *rq, struct task_struct *curr)
 extern const struct sched_class stop_sched_class;
 extern const struct sched_class dl_sched_class;
 extern const struct sched_class rt_sched_class;
+extern const struct sched_class iot_sched_class;
 extern const struct sched_class fair_sched_class;
 extern const struct sched_class idle_sched_class;
 
@@ -1626,6 +1660,7 @@ extern void update_max_interval(void);
 
 extern void init_sched_dl_class(void);
 extern void init_sched_rt_class(void);
+extern void init_sched_iot_class(void);
 extern void init_sched_fair_class(void);
 
 extern void reweight_task(struct task_struct *p, int prio);
@@ -2057,6 +2092,7 @@ print_numa_stats(struct seq_file *m, int node, unsigned long tsf,
 
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq);
+extern void init_iot_rq(struct iot_rq *iot_rq);
 extern void init_dl_rq(struct dl_rq *dl_rq);
 
 extern void cfs_bandwidth_usage_inc(void);
