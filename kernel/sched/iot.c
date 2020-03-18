@@ -14,13 +14,13 @@ void init_iot_rq(struct iot_rq *iot_rq)
     // get the address of the active run-queues
     array = &iot_rq->active;
 
-    // init the headers of each run-queues with different priority
+    // init the headers of each array index 
     for (i = 0; i < MAX_IOT_PRIO; i++) {
         INIT_LIST_HEAD(array->queue + i);
         __clear_bit(i, array->bitmap);
     }
 
-    // set the bitmap for the sepcific CPU in order to find the queues with different priority in multiple CPUs.
+    // set the delimiter of the bitmap.
     __set_bit(MAX_IOT_PRIO, array->bitmap);
 
     // set value of the highest priority
@@ -58,7 +58,6 @@ static inline struct iot_rq *iot_rq_of_se(struct sched_iot_entity *iot_se)
 
     return &rq->iot;
 }
-
 
 static void dequeue_top_iot_rq(struct iot_rq *iot_rq)
 {
@@ -102,9 +101,9 @@ static void enqueue_task_iot(struct rq *rq, struct task_struct *p, int flags)
     /*TODO: find the index based on the priority,
       * insert the sched_iot_entity to the linked list of the index   
       * set the bitmap,
-      * set the on_list to 1
-      * set the on_rq to 1
-      * increase the iot_nr_running by 1
+      * set the iot_se->on_list to 1
+      * set the iot_se->on_rq to 1
+      * increase the iot_rq->iot_nr_running by 1
       */
 
 
@@ -115,7 +114,7 @@ static void enqueue_task_iot(struct rq *rq, struct task_struct *p, int flags)
 
 
 /*
- * dequeue_task are used to remove a task from the run queue,
+ * dequeue_task is used to remove a task from the run queue,
  */
 
 static void dequeue_task_iot(struct rq *rq, struct task_struct *p, int flags)
@@ -140,9 +139,9 @@ static void dequeue_task_iot(struct rq *rq, struct task_struct *p, int flags)
       * if the sched_iot_entity is on the run queue,
       * remove the sched_iot_entity from the priority array
       * if the linked list is empty, reset the bitmap
-      * reset the on_list to 0
-      * reset the on_rq to 0
-      * reduce the iot_nr_running by 1;
+      * reset the iot_se->on_list to 0
+      * reset the iot_se->on_rq to 0
+      * reduce the iot_rq->iot_nr_running by 1;
       */
     
 }
@@ -161,7 +160,7 @@ static int select_task_rq_iot(struct task_struct *p, int cpu, int sd_flag, int f
 }
 
 /*
- * In this function, you will be choosing which task will be run next.
+ * In this function, you will choose which task will be run next.
  * Which task you choose will depend on how you organize your tasks
  * in the runqueue. Remember that there is a per-CPU runqueue. This
  * function is called primarily from the core schedule() function.
